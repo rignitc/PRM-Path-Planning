@@ -7,8 +7,8 @@ class Edge:
         self.to_node = to_node
         self.length = length
     
-    # def to_json(self):
-    #     return json.dumps(self, default=lambda o: o.__dict__)
+    def to_json(self):
+        return json.dumps(self, default=lambda o: o.__dict__)
     
     def __repr__(self):
         return str(self.to_node) + '/' + str(self.length)
@@ -55,8 +55,33 @@ class Graph:
             self.add_node(node_data[0])
             for j in range(1,len(node_data)):
                 edge = node_data[j].split('/')
-                self.add_edge(node_data[0],node_data[i],edge[0],int(edge[1]))
+                self.add_edge(node_data[0],node_data[i],edge[0],float(edge[1]))
         csv_file.close()
+    
+    def to_json(self):
+        data = dict.fromkeys(self.node)
+        for i in range(len(data)):
+            node = self.edges[data.keys[i]]
+            for j in range(len(node)):
+                node[j] = node[j].to_json()
+            data[data.keys[i]] = node
+        return str(data)
+    
+    def export_json(self,output_filename):
+        json_file = open(output_filename,'w')
+        json_file.write(self.to_json())
+        json_file.close()
+    
+    def import_json(self,input_filename):
+        json_file = open(input_filename,'r')
+        data = json.loads(str(json_file.readlines()))
+        for i in range(len(data.keys)):
+            self.add_node(data.keys[i])
+            edges = data[data.keys[i]]
+            for j in range(len(edges)):
+                self.add_edge(data.keys[i],edges[j]["to_node"],float(edges[j]["length"]))
+        json_file.close()
+        return self
 
 def min_dist(q, dist):
     """
