@@ -33,8 +33,7 @@ class Graph:
     
     def export_csv(self,output_filename):
         csv_file = open(output_filename,'w')
-        for i in range(len(self.nodes)):
-            node = self.nodes[i]
+        for node in self.nodes:
             csv_file.write(str(node))
             if node not in self.edges:
                 print("Error exporting... graph incomplete")
