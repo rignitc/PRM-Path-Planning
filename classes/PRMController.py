@@ -8,6 +8,7 @@ import numpy as np
 from sklearn.neighbors import NearestNeighbors
 import shapely.geometry
 import argparse
+import pickle
 
 from .Dijkstra import Graph, dijkstra, to_array
 from .Utils import Utils
@@ -45,16 +46,17 @@ class PRMController:
             self.shortestPath()
 
             seed = np.random.randint(1, 100000)
-            self.coordsList = np.array([])
-            self.graph = Graph()
+            # self.coordsList = np.array([])
+            # self.graph = Graph()
 
         if(saveImage):
             plt.savefig("{}_samples.png".format(self.numOfCoords))
         plt.show()
 
-    def genCoords(self, maxSizeOfMap=100):
+    def genCoords(self, maxSizeOfMap=800):
         self.coordsList = np.random.randint(
             maxSizeOfMap, size=(self.numOfCoords, 2))
+        
         # Adding begin and end points
         self.current = self.current.reshape(1, 2)
         self.destination = self.destination.reshape(1, 2)
@@ -74,7 +76,7 @@ class PRMController:
                         [self.collisionFreePoints, point])
         self.plotPoints(self.collisionFreePoints)
 
-    def findNearestNeighbour(self, k=5):
+    def findNearestNeighbour(self, k=25):
         X = self.collisionFreePoints
         knn = NearestNeighbors(n_neighbors=k)
         knn.fit(X)
@@ -100,6 +102,7 @@ class PRMController:
                         plt.plot(x, y)
 
     def shortestPath(self):
+        print("in shortestPath")
         self.startNode = str(self.findNodeIndex(self.current))
         self.endNode = str(self.findNodeIndex(self.destination))
 
@@ -110,6 +113,8 @@ class PRMController:
         if(len(pathToEnd) > 1):
             self.solutionFound = True
         else:
+            print("path not found")
+            self.shortestPath()
             return
 
         # Plotting shorest path
@@ -132,6 +137,8 @@ class PRMController:
         )
         )
 
+        plt.show()
+
     def checkLineCollision(self, start_line, end_line):
         collision = False
         line = shapely.geometry.LineString([start_line, end_line])
@@ -151,6 +158,7 @@ class PRMController:
         return False
 
     def findNodeIndex(self, p):
+        #print('p=' + str(np.where((self.collisionFreePoints == p).all(axis=1))[0][0]))
         return np.where((self.collisionFreePoints == p).all(axis=1))[0][0]
 
     def findPointsFromNode(self, n):
@@ -175,3 +183,46 @@ class PRMController:
             if(collision):
                 return True
         return False
+
+    def newPath(self,current,destination):
+        self.current = np.array(current)
+        self.destination = np.array(destination)
+
+        if(not self.checkPointCollision(current) and not self.checkPointCollision(destination)):
+            if( np.where((self.collisionFreePoints == current).all(axis=1))[0].size == 0):
+                current = np.reshape(current,(-1,2))
+                current_distances = np.sum(np.square(self.collisionFreePoints - current))
+                current_nearest = self.collisionFreePoints[np.argmin(current_distances,axis=1)]
+                current_nearest_length = np.min(current_distances,axis=1)
+                self.collisionFreePoints = np.vstack([self.collisionFreePoints,current])
+                print("Added successfully")
+                self.graph.add_node(str(self.findNodeIndex(current)))
+                self.graph.add_edge(str(self.findNodeIndex(current)),str(self.findNodeIndex(current_nearest)),current_nearest_length)
+            else:
+                print("Current point exists")
+                print(self.findNodeIndex(current))
+            if ( np.where((self.collisionFreePoints == destination).all(axis=1))[0].size == 0):
+                destination = np.reshape(destination,(-1,2))
+                destination_distances = np.sum(np.square(self.collisionFreePoints - destination),axis=1)
+                destination_nearest =  self.collisionFreePoints[np.argmin(destination_distances)]
+                destination_nearest_length = np.min(destination_distances)
+                self.collisionFreePoints = np.vstack([self.collisionFreePoints,destination])
+                self.graph.add_node(str(self.findNodeIndex(destination)))
+                self.graph.add_edge(str(self.findNodeIndex(destination_nearest)),str(self.findNodeIndex(destination)),destination_nearest_length)
+            else:
+                print("Destination point exists")
+                print(self.findNodeIndex(destination))
+        else:
+            print("Error point collision is true")
+    
+    def exportData(self,filename):
+        graph_file = open(filename + ".plk","wb")
+        pickle.dump(self.graph,graph_file,pickle.HIGHEST_PROTOCOL)
+        np.savez(filename + "_collision_data",points=self.collisionFreePoints,paths=self.collisionFreePaths)
+    
+    def importData(self,filename):
+        graph_file = open(filename + ".plk", "rb")
+        self.graph = pickle.load(graph_file)
+        collision_data = np.load(filename + "_collision_data.npz")
+        self.collisionFreePoints = collision_data["points"]
+        self.collisionFreePaths = collision_data["paths"]
