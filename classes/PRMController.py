@@ -4,6 +4,7 @@ import math
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.patches import Rectangle
+from PIL import Image
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
 import shapely.geometry
@@ -56,7 +57,7 @@ class PRMController:
     def genCoords(self, sizeOfX=700,sizeOfY=800):
         x = np.random.randint(1,sizeOfX,size=self.numOfCoords)
         y = np.random.randint(1,sizeOfY, size=self.numOfCoords)
-        self.coordsList = np.column_stack((y,x))
+        self.coordsList = np.column_stack((x,y))
         
         # Adding begin and end points
         self.current = self.current.reshape(1, 2)
@@ -124,8 +125,9 @@ class PRMController:
 
         x = [int(item[0]) for item in pointsToDisplay]
         y = [int(item[1]) for item in pointsToDisplay]
-        plt.imshow(self)
-        plt.plot(x, y, c="blue", linewidth=3.5)
+
+        plt.plot(x, y, c="white", linewidth=3.5,)
+        plt.imshow(self.collisionMap,origin="lower")
 
         pointsToEnd = [str(self.findPointsFromNode(path))
                        for path in pathToEnd]
@@ -142,11 +144,14 @@ class PRMController:
         plt.show()
 
     def checkLineCollision(self, start_line, end_line):
-        collision = False
-        x = np.array(np.linspace(start_line[0],end_line[0],abs(end_line[0]-start_line[0]),dtype=int))
-        y = np.array(np.linspace(start_line[1],end_line[1],abs(end_line[1]-start_line[1]),dtype=int))
-        np.column_stack((x,y))
-            
+        dist = abs(end_line - start_line)
+        number_of_points = max(dist)
+        x = np.linspace(start_line[0],end_line[0],number_of_points,dtype=int)
+        y = np.linspace(start_line[1],end_line[1],number_of_points,dtype=int)
+        for y,x in np.column_stack((x,y)):
+            if(self.collisionMap[x][y]):
+                return True
+        return False
         # line = shapely.geometry.LineString([start_line, end_line])
         # for obs in self.allObs:
         #     if(self.utils.isWall(obs)):
@@ -184,8 +189,8 @@ class PRMController:
             return False
 
     def checkPointCollision(self, point):
-        p_x = point[0]
-        p_y = point[1]
+        p_x = point[1]
+        p_y = point[0]
         return self.collisionMap[p_x,p_y]
         # for obs in self.allObs:
         #     collision = self.checkCollision(obs, point)
