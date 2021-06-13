@@ -15,10 +15,10 @@ from .Utils import Utils
 
 
 class PRMController:
-    def __init__(self, numOfRandomCoordinates, allObs, current, destination):
+    def __init__(self, numOfRandomCoordinates, collisionMap, current, destination):
         self.numOfCoords = numOfRandomCoordinates
         self.coordsList = np.array([])
-        self.allObs = allObs
+        self.collisionMap = collisionMap
         self.current = np.array(current)
         self.destination = np.array(destination)
         self.graph = Graph()
@@ -53,9 +53,10 @@ class PRMController:
             plt.savefig("{}_samples.png".format(self.numOfCoords))
         plt.show()
 
-    def genCoords(self, maxSizeOfMap=800):
-        self.coordsList = np.random.randint(
-            maxSizeOfMap, size=(self.numOfCoords, 2))
+    def genCoords(self, sizeOfX=700,sizeOfY=800):
+        x = np.random.randint(1,sizeOfX,size=self.numOfCoords)
+        y = np.random.randint(1,sizeOfY, size=self.numOfCoords)
+        self.coordsList = np.column_stack((y,x))
         
         # Adding begin and end points
         self.current = self.current.reshape(1, 2)
@@ -123,6 +124,7 @@ class PRMController:
 
         x = [int(item[0]) for item in pointsToDisplay]
         y = [int(item[1]) for item in pointsToDisplay]
+        plt.imshow(self)
         plt.plot(x, y, c="blue", linewidth=3.5)
 
         pointsToEnd = [str(self.findPointsFromNode(path))
@@ -141,21 +143,25 @@ class PRMController:
 
     def checkLineCollision(self, start_line, end_line):
         collision = False
-        line = shapely.geometry.LineString([start_line, end_line])
-        for obs in self.allObs:
-            if(self.utils.isWall(obs)):
-                uniqueCords = np.unique(obs.allCords, axis=0)
-                wall = shapely.geometry.LineString(
-                    uniqueCords)
-                if(line.intersection(wall)):
-                    collision = True
-            else:
-                obstacleShape = shapely.geometry.Polygon(
-                    obs.allCords)
-                collision = line.intersects(obstacleShape)
-            if(collision):
-                return True
-        return False
+        x = np.array(np.linspace(start_line[0],end_line[0],abs(end_line[0]-start_line[0]),dtype=int))
+        y = np.array(np.linspace(start_line[1],end_line[1],abs(end_line[1]-start_line[1]),dtype=int))
+        np.column_stack((x,y))
+            
+        # line = shapely.geometry.LineString([start_line, end_line])
+        # for obs in self.allObs:
+        #     if(self.utils.isWall(obs)):
+        #         uniqueCords = np.unique(obs.allCords, axis=0)
+        #         wall = shapely.geometry.LineString(
+        #             uniqueCords)
+        #         if(line.intersection(wall)):
+        #             collision = True
+        #     else:
+        #         obstacleShape = shapely.geometry.Polygon(
+        #             obs.allCords)
+        #         collision = line.intersects(obstacleShape)
+        #     if(collision):
+        #         return True
+        # return False
 
     def findNodeIndex(self, p):
         #print('p=' + str(np.where((self.collisionFreePoints == p).all(axis=1))[0][0]))
@@ -178,11 +184,14 @@ class PRMController:
             return False
 
     def checkPointCollision(self, point):
-        for obs in self.allObs:
-            collision = self.checkCollision(obs, point)
-            if(collision):
-                return True
-        return False
+        p_x = point[0]
+        p_y = point[1]
+        return self.collisionMap[p_x,p_y]
+        # for obs in self.allObs:
+        #     collision = self.checkCollision(obs, point)
+        #     if(collision):
+        #         return True
+        # return False
 
     def newPath(self,current,destination):
         self.current = np.array(current)
